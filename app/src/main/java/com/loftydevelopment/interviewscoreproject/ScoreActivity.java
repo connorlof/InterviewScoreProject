@@ -41,12 +41,14 @@ public class ScoreActivity extends AppCompatActivity {
 
     private void parseScoreData(String scoreData){
 
-        String[] splitScoreData = scoreData.split("\\s*,\\s*");
+        String[] splitScoreData = scoreData.split("\\s*-\\s*");
 
         name = splitScoreData[0];
         score = splitScoreData[1];
-        date = splitScoreData[2];
-        time = splitScoreData[3];
+
+        String[] splitDateTime = splitScoreData[2].split("\\s+");
+        date = splitDateTime[0];
+        time = splitDateTime[1];
 
     }
 

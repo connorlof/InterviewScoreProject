@@ -10,7 +10,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity android:name=".ScoreActivity"></activity>
-        <activity android:name=".ScoreGeneratorActivity">
+        <activity android:name=".ScoreListActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
