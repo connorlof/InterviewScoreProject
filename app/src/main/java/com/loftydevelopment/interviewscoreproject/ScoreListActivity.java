@@ -1,30 +1,38 @@
 package com.loftydevelopment.interviewscoreproject;
 
+import android.content.Context;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 
+
 public class ScoreListActivity extends AppCompatActivity {
 
-    private String[] sampleData = {
-                                    "Ryan, 63, 1546341851000, m",
-                                    "Sam, 86, 1536442851000, m",
-                                    "Joey, 78, 1546442992000, m",
-                                    "Melissa, 91, 1540341851000, f",
-                                    "Jess, 93, 1540341751000, f",
-                                    "Carly, 89, 1540341651000, f"
-                                };
+    private final String JSON_URL = "https://gist.githubusercontent.com/ryanneuroflow/370d19311602c091928300edd7a40f66/raw/1865ae6004142553d8a6c6ba79ccb511028a2cba/names.json";
+    private ArrayList<Score> scoreList;
 
-    private final String[] sectionHeaders = {"Males", "Females"};
+    private final String[] sectionHeaders = {"males", "females"};
     private ListView scoreListView;
     private SectionListAdapter adapter;
 
@@ -34,29 +42,111 @@ public class ScoreListActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_score_list);
 
-        adapter = new SectionListAdapter(this);
+        scoreList = new ArrayList<>();
 
-        ArrayAdapter<String> listAdapterMales = new ArrayAdapter<>(
-                this, R.layout.list_item, generateOrderedSectionArray(sampleData, "m"));
+        //retrieve JSON on a different thread than UI
+        new Thread(new Runnable() {
 
-        ArrayAdapter<String> listAdapterFemales = new ArrayAdapter<>(
-                this, R.layout.list_item, generateOrderedSectionArray(sampleData, "f"));
+            public void run() {
 
-        adapter.addSection(sectionHeaders[0], listAdapterMales);
-        adapter.addSection(sectionHeaders[1], listAdapterFemales);
+                final String jsonData = loadJSONFromWeb(JSON_URL);
 
-        scoreListView = (ListView) this.findViewById(R.id.list_journal);
-        scoreListView.setAdapter(adapter);
+                runOnUiThread(new Runnable() {
 
-        scoreListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long duration) {
+                    @Override
+                    public void run() {
 
-                TextView scoreTextView = (TextView) view.findViewById(R.id.list_item_title);
-                openScoreActivity(scoreTextView.getText().toString());
+                        //run on UI thread once complete
+                        parseJson(jsonData);
+
+                        adapter = new SectionListAdapter(getApplicationContext());
+
+                        ArrayAdapter<String> listAdapterMales = new ArrayAdapter<>(
+                                getApplicationContext(), R.layout.list_item, generateOrderedSectionArray(Score.Gender.MALE));
+
+                        ArrayAdapter<String> listAdapterFemales = new ArrayAdapter<>(
+                                getApplicationContext(), R.layout.list_item, generateOrderedSectionArray(Score.Gender.FEMALE));
+
+                        adapter.addSection(sectionHeaders[0], listAdapterMales);
+                        adapter.addSection(sectionHeaders[1], listAdapterFemales);
+
+                        scoreListView = ScoreListActivity.this.findViewById(R.id.list_journal);
+                        scoreListView.setAdapter(adapter);
+
+                        scoreListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                            @Override
+                            public void onItemClick(AdapterView<?> parent, View view, int position, long duration) {
+
+                                TextView scoreTextView = view.findViewById(R.id.list_item_title);
+                                openScoreActivity(scoreTextView.getText().toString());
+
+                            }
+                        });
+
+                    }
+                });
+            }
+        }).start();
+
+    }
+
+    private void parseJson(String jsonData){
+
+        try {
+
+            JSONArray jsonArray = new JSONArray(jsonData);
+
+            for(int i = 0; i < jsonArray.length(); i++){
+
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                JSONArray subArray = jsonObject.getJSONArray(sectionHeaders[i]);
+
+                for(int j =0 ; j < subArray.length(); j++) {
+
+                    JSONObject scoreJson = subArray.getJSONObject(j);
+                    String name = scoreJson.getString("name");
+                    String score = scoreJson.getString("score");
+                    String date = scoreJson.getString("date_created");
+                    Log.i("json_value", name + ", " + score + ", " + date + ", " + sectionHeaders[i].substring(0, 1));
+
+                    scoreList.add(new Score(name + ", " + score + ", " + date + ", " + sectionHeaders[i].substring(0, 1)));
+
+                }
 
             }
-        });
+
+        } catch (JSONException e) {
+            Log.i("Error", e.getMessage());
+        }
+
+
+    }
+
+    public String loadJSONFromWeb(String urlString) {
+
+        URLConnection feedUrl;
+        String jsonData = "";
+
+        try {
+            feedUrl = new URL(urlString).openConnection();
+            InputStream is = feedUrl.getInputStream();
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+            String line = null;
+
+            while ((line = reader.readLine()) != null) {
+                jsonData = jsonData + line;
+            }
+
+            is.close();
+
+            return jsonData;
+
+        }catch (Exception e) {
+            Toast.makeText(this, "Error reading JSON from URL. Check internet connection.", Toast.LENGTH_LONG).show();
+        }
+
+        return null;
 
     }
 
@@ -68,33 +158,30 @@ public class ScoreListActivity extends AppCompatActivity {
 
     }
 
-    private String[] generateOrderedSectionArray(String[] data, String gender){
+    private String[] generateOrderedSectionArray(Score.Gender gender){
 
-        ArrayList<Score> scoreList = new ArrayList<>();
+        ArrayList<Score> genderList = new ArrayList<>();
 
-        for(String scoreString : data){
+        for(Score score : scoreList){
 
-            if(scoreString.endsWith(gender)){
-
-                Score score = new Score(scoreString);
-                scoreList.add(score);
-
+            if(score.getGender() == gender){
+                genderList.add(score);
             }
 
         }
 
-        Collections.sort(scoreList, new Comparator<Score>() {
+        Collections.sort(genderList, new Comparator<Score>() {
             @Override
             public int compare(Score o1, Score o2) {
                 return o1.getDateTimeLong().compareTo(o2.getDateTimeLong());
             }
         });
 
-        String[] scoresFormatted = new String[scoreList.size()];
+        String[] scoresFormatted = new String[genderList.size()];
 
         for(int i = 0; i < scoresFormatted.length; i++){
 
-            scoresFormatted[i] = scoreList.get(i).getFormattedScore();
+            scoresFormatted[i] = genderList.get(i).getFormattedScore();
 
         }
 

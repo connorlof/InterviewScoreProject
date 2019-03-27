@@ -27,10 +27,10 @@ public class ScoreActivity extends AppCompatActivity {
 
     private void setTextViews(){
 
-        tvName = (TextView) findViewById(R.id.tvName);
-        tvScore = (TextView) findViewById(R.id.tvScore);
-        tvDate = (TextView) findViewById(R.id.tvDate);
-        tvTime = (TextView) findViewById(R.id.tvTime);
+        tvName = findViewById(R.id.tvName);
+        tvScore = findViewById(R.id.tvScore);
+        tvDate = findViewById(R.id.tvDate);
+        tvTime = findViewById(R.id.tvTime);
 
         tvName.setText(name);
         tvScore.setText(score);

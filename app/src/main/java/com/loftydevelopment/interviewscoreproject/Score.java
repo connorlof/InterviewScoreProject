@@ -26,7 +26,7 @@ public class Score{
 
         String[] splitScoreData = scoreData.split("\\s*,\\s*");
 
-        name = splitScoreData[0];
+        name = splitScoreData[0].substring(0, 1).toUpperCase() + splitScoreData[0].substring(1);
         score = splitScoreData[1];
 
         dateTimeLong = Long.parseLong(splitScoreData[2]);
